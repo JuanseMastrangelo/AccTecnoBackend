@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuthModel;
 use App\Models\CartModel;
 use Illuminate\Http\Request;
+use App\Models\UserLocationsModel;
 
 use MP;
 use App\Http\Requests;
@@ -44,7 +45,7 @@ class MercadoPago extends Controller {
                 "name" => "TETE5445823",
                 "email" => "test_user_58294528@testuser.com"
             ],
-            "notification_url" => "190.188.144.237:8000/api/notification"
+            "notification_url" => "https://softwareargentina.store/api/notification"
         ];
 
         return MP::create_preference($preferenceData);
@@ -81,21 +82,19 @@ class MercadoPago extends Controller {
                 $payment = MP::get_payment($id);
                 $orderId = $payment['response']['collection']['order_id'];
                 $merchant_order = MP::get_MerchantOrder($orderId);
+                $this->notifDatabase($merchant_order);
                 break;
             case "merchant_order":
                 $merchant_order = MP::get_MerchantOrder($id);
-                $refreshToken = $request->bearerToken();
-                $uid = AuthModel::where('refreshToken', $refreshToken)->first()->uid;
-                $this->deleteCart($uid);
-                $this->notifDatabase($merchant_order, $id, $uid);
+                $this->notifDatabase($merchant_order);
                 break;
         }
-
-        return $request;
+        return $additional_info;
     }
 
-    public function notifDatabase($merchant_order, $id, $uid)
+    public function notifDatabase($merchant_order)
     {
+
         $paid_amount = 0;
         $array = $merchant_order['response']['payments'];
         $array_num = count($array);
@@ -117,32 +116,36 @@ class MercadoPago extends Controller {
         } else {
             $message = "pending";
         }
-
+        $id = $merchant_order['response']['id'];
         $sellItem = SellerModel::where('id', $id);
         $additional_info = json_decode($merchant_order['response']['additional_info'], true);
 
+        
         if ($sellItem->count() > 0) {
             $task = $sellItem->update([
-                'status' => $message,
-                'userData' => $additional_info,
-                'items' => json_encode($merchant_order['response']['payments']),
-                'id' => $id,
-                'shipId' => $array_num,
-                'userId' => $uid,
-                'orderDetails' => $merchant_order['response']
-            ]);
-        } else {
-            $task = SellerModel::create([
                 'status' => $message,
                 'userData' => json_encode($additional_info),
                 'items' => json_encode($merchant_order['response']['payments']),
                 'id' => $id,
                 'shipId' => $array_num,
-                'userId' => $uid,
+                'userId' => $additional_info['id'],
+                'orderDetails' => json_encode($merchant_order['response'])
+            ]);
+        } else {
+            $shipLocation = UserLocationsModel::where('userId', "=", $additional_info['id'])->first();
+            $task = SellerModel::create([
+                'status' => $message,
+                'userData' => $merchant_order['response']['additional_info'],
+                'items' => json_encode($merchant_order['response']['payments']),
+                'id' => $id,
+                'shipId' => $array_num,
+                'userId' => $additional_info['id'],
+                'shipData' => $shipLocation,
                 'orderDetails' => json_encode($merchant_order['response'])
             ]);
         }
 
+        $this->deleteCart($additional_info['id']);
 
 
         return $task;

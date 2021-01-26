@@ -15,6 +15,7 @@ Route::get('auth/AllUsersCount', 'Auth@getAllCount');
 /* MercadoPago */
 Route::post('createPreference','MercadoPago@createPreference');
 Route::post('notification', 'MercadoPago@notificationIPN');
+Route::post('pr', 'MercadoPago@pr');
 Route::post('createShipping', 'MercadoPago@createShippment');
 Route::get('getAllOrders', 'MercadoPago@get_all_merchant_order');
 Route::get('getToken', 'MercadoPago@getToken');
