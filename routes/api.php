@@ -56,3 +56,10 @@ Route::post('favorites', 'Favorites@add');
 /* Locations */
 Route::get('UserLocations', 'UserLocations@getAll');
 Route::post('UserLocations', 'UserLocations@add');
+
+/* Ventas */
+Route::get('sales', 'Seller@getAll');
+Route::post('salesAdd', 'Seller@add');
+Route::delete('sales/{id}', 'Seller@delete');
+Route::post('salesUpdate', 'Seller@update');
+Route::post('salesUpdateStatus', 'Seller@updateStatus');
